@@ -96,27 +96,28 @@ def compare_products(
 def smart_get(
     keyword:str=Query(None),
     sort_by:str=Query('price',description="price or name"),
-    order:str=Query('asc',descirption='asc or desc'),
+    order:str=Query('asc',description='asc or desc'),
     page:int=Query(1,ge=1,description="Enter page"),
     limit:int=Query(4,ge=1,description="Number of products for page")
 ):
     result=products
     if keyword:
         result=[p for p in result if keyword.lower() in p['name'].lower()]
-    order=(order=="desc")
+    reverse=(order=="desc")
     if sort_by in ["price","name"]:
-        result=sorted(result,key=lambda x:x[sort_by],reverse=True)
+        result=sorted(result,key=lambda x:x[sort_by],reverse=reverse)
+    total=len(result)
     start = (page - 1) * limit
     end   = start + limit
-    paged = products[start:end]
+    paged = result[start:end]
     return {
         "keyword":keyword,
         'sort_by':sort_by,
         "order":order,
         'page': page,
         'limit': limit,
-        'total': len(products),
-        'total_pages': -(-len(products) // limit),   # ceiling division
+        'total_found': len(result),
+        'total_pages': -(-total // limit),   # ceiling division
         'products': paged,
     }
 
@@ -258,6 +259,23 @@ def place_order(order_data: OrderRequest):
 def get_all_orders():
     return {'orders': orders, 'total_orders': len(orders)}
 
+
+@app.get('/orders/page')
+def get_orders_paginate(
+    page:int=Query(1,description=("Enter page")),
+    limit:int=Query(3,description=("enter products for page"))
+):
+    start=(page-1)*limit
+    end=start+limit
+    paged=orders[start:end]
+    return {
+        'page':        page,
+        'limit':       limit,
+        'total':       len(orders),
+        'total_pages': -(-len(orders) // limit),   # ceiling division
+        'products':    paged,
+    }
+    
 
 @app.get('/orders/search')
 def get_orders_by_name(
